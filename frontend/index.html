@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SafeScan — Know What's In Your Food</title>
+  <link rel="stylesheet" href="css/styles.css">
+  <style>
+    .hero { text-align: center; padding: 60px 16px 40px; }
+    .hero-icon { font-size: 72px; margin-bottom: 16px; }
+    .hero-title { font-size: 36px; font-weight: 900; color: var(--primary); line-height: 1.2; margin-bottom: 12px; }
+    .hero-sub { font-size: 17px; color: var(--gray-600); max-width: 340px; margin: 0 auto 32px; line-height: 1.6; }
+    .feature-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 32px; }
+    .feature-card { background: #fff; border-radius: var(--radius); padding: 18px 14px; box-shadow: var(--shadow); text-align: center; }
+    [data-theme="dark"] .feature-card { background: #1e293b; }
+    .feature-icon { font-size: 32px; margin-bottom: 8px; }
+    .feature-title { font-size: 14px; font-weight: 700; margin-bottom: 4px; }
+    .feature-desc  { font-size: 12px; color: var(--gray-400); line-height: 1.5; }
+    .steps { margin-bottom: 32px; }
+    .step { display: flex; align-items: flex-start; gap: 16px; margin-bottom: 20px; }
+    .step-num { width: 36px; height: 36px; background: var(--primary); color: #fff; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 16px; flex-shrink: 0; }
+    .step-text { padding-top: 4px; }
+    .step-title { font-weight: 700; font-size: 15px; }
+    .step-desc  { font-size: 13px; color: var(--gray-400); margin-top: 2px; }
+    .cta-section { text-align: center; padding: 32px 0 20px; }
+    .badge-row { display: flex; justify-content: center; gap: 12px; flex-wrap: wrap; margin-bottom: 24px; }
+    .badge { background: var(--gray-100); border-radius: 20px; padding: 6px 14px; font-size: 13px; font-weight: 600; color: var(--gray-600); }
+    footer { text-align: center; padding: 20px; font-size: 13px; color: var(--gray-400); border-top: 1px solid var(--gray-200); }
+  </style>
+</head>
+<body>
+
+<!-- Nav -->
+<nav>
+  <div class="nav-inner">
+    <span class="nav-logo">🔍 SafeScan</span>
+    <div class="nav-actions">
+      <button class="nav-icon" id="darkToggle" title="Toggle dark mode">🌙</button>
+      <a href="login.html" class="btn btn-outline btn-sm" style="width:auto;padding:8px 16px">Sign In</a>
+    </div>
+  </div>
+</nav>
+
+<div class="container">
+
+  <!-- Hero -->
+  <div class="hero">
+    <div class="hero-icon">🔍</div>
+    <h1 class="hero-title">Know Exactly What's In Your Food</h1>
+    <p class="hero-sub">Photograph any ingredient label and instantly find out if it's safe for you — personalised to your allergies, diet, and health conditions.</p>
+    <a href="register.html">
+      <button class="btn btn-primary" style="font-size:18px;padding:16px 32px;width:auto;margin-bottom:12px">
+        🚀 Get Started Free
+      </button>
+    </a>
+    <br>
+    <a href="login.html" style="font-size:14px;color:var(--gray-400)">Already have an account? Sign in</a>
+  </div>
+
+  <!-- Trust badges -->
+  <div class="badge-row">
+    <span class="badge">🤖 Gemini AI</span>
+    <span class="badge">🔒 Private & Secure</span>
+    <span class="badge">⚡ 5-sec Analysis</span>
+    <span class="badge">🌿 100% Free</span>
+  </div>
+
+  <!-- Features -->
+  <div class="section-title text-center" style="margin-bottom:16px">Why SafeScan?</div>
+  <div class="feature-grid">
+    <div class="feature-card">
+      <div class="feature-icon">🥜</div>
+      <div class="feature-title">Allergy Detection</div>
+      <div class="feature-desc">Red alerts for your specific allergens — peanuts, dairy, gluten & more</div>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">🧪</div>
+      <div class="feature-title">Ingredient Breakdown</div>
+      <div class="feature-desc">Plain-English explanation of every ingredient — no chemistry degree needed</div>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">💚</div>
+      <div class="feature-title">Healthier Alternatives</div>
+      <div class="feature-desc">Unsafe product? Get 3–5 better alternatives with full nutrition info</div>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">📊</div>
+      <div class="feature-title">Health Score</div>
+      <div class="feature-desc">Every product rated 0–100 so you can compare at a glance</div>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">🕐</div>
+      <div class="feature-title">Scan History</div>
+      <div class="feature-desc">All your scans saved — search, filter, and track your choices over time</div>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">🌙</div>
+      <div class="feature-title">Dark Mode</div>
+      <div class="feature-desc">Easy on your eyes, any time of day</div>
+    </div>
+  </div>
+
+  <!-- How it works -->
+  <div class="card" style="margin-bottom:24px">
+    <div class="section-title">How It Works</div>
+    <div class="steps">
+      <div class="step">
+        <div class="step-num">1</div>
+        <div class="step-text">
+          <div class="step-title">Set Your Health Profile</div>
+          <div class="step-desc">Tell us your allergies, dietary preferences, and medical conditions once — we remember them forever.</div>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">2</div>
+        <div class="step-text">
+          <div class="step-title">Photograph Any Label</div>
+          <div class="step-desc">Use your phone camera or upload a photo of any packaged food, supplement, or cosmetic label.</div>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">3</div>
+        <div class="step-text">
+          <div class="step-title">Get Instant AI Analysis</div>
+          <div class="step-desc">Gemini AI reads every ingredient and cross-checks against your profile in under 10 seconds.</div>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">4</div>
+        <div class="step-text">
+          <div class="step-title">Shop with Confidence</div>
+          <div class="step-desc">Clear ✅ Safe / ⚠️ Caution / ❌ Unsafe verdict. If unsafe, see better alternatives right away.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- CTA bottom -->
+  <div class="cta-section">
+    <div style="font-size:40px;margin-bottom:12px">🛒</div>
+    <h2 style="font-size:22px;font-weight:800;margin-bottom:8px">Start scanning today</h2>
+    <p class="text-muted text-sm" style="margin-bottom:20px">Free forever. No credit card required.</p>
+    <a href="register.html">
+      <button class="btn btn-primary" style="font-size:16px;padding:14px 32px;width:auto">
+        Create Free Account →
+      </button>
+    </a>
+  </div>
+
+</div>
+
+<footer>
+  Made with ❤️ &nbsp;·&nbsp; SafeScan uses Google Gemini AI for ingredient analysis<br>
+  <span style="font-size:11px">Not a substitute for medical advice. Always consult your doctor for health decisions.</span>
+</footer>
+
+<script type="module">
+  import { isLoggedIn, toggleDarkMode, initDarkMode } from './js/api.js';
+  initDarkMode();
+  // Redirect logged-in users straight to dashboard
+  if (isLoggedIn()) window.location.href = 'dashboard.html';
+  document.getElementById('darkToggle').addEventListener('click', toggleDarkMode);
+</script>
+</body>
+</html>

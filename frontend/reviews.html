@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SafeScan — Community Reviews</title>
+  <link rel="stylesheet" href="css/styles.css">
+  <style>
+    .star-row { display: flex; gap: 6px; margin: 8px 0; }
+    .star { font-size: 28px; cursor: pointer; transition: transform .1s; color: var(--gray-200); }
+    .star.filled { color: #f59e0b; }
+    .star:hover { transform: scale(1.2); }
+    .review-card { background: #fff; border-radius: var(--radius); padding: 16px; margin-bottom: 12px; box-shadow: var(--shadow); }
+    [data-theme="dark"] .review-card { background: #1e293b; }
+    .review-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
+    .reviewer-name { font-weight: 700; font-size: 15px; }
+    .review-stars  { color: #f59e0b; font-size: 14px; }
+    .review-date   { font-size: 12px; color: var(--gray-400); margin-top: 2px; }
+    .review-text   { font-size: 14px; line-height: 1.6; margin-top: 6px; }
+    .helpful-btn   { background: none; border: 1px solid var(--gray-200); border-radius: 20px; padding: 4px 12px; font-size: 13px; color: var(--gray-600); cursor: pointer; margin-top: 8px; transition: all .15s; }
+    .helpful-btn:hover { background: var(--gray-100); }
+    .avg-score { text-align: center; padding: 20px; }
+    .avg-num   { font-size: 52px; font-weight: 900; color: #f59e0b; line-height: 1; }
+    .avg-stars { font-size: 24px; color: #f59e0b; margin: 4px 0; }
+    .avg-count { font-size: 13px; color: var(--gray-400); }
+    .sort-bar  { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 4px; margin-bottom: 16px; }
+  </style>
+</head>
+<body>
+<nav>
+  <div class="nav-inner">
+    <a href="javascript:history.back()" style="font-size:22px">←</a>
+    <span class="nav-logo">Community Reviews</span>
+    <span></span>
+  </div>
+</nav>
+
+<div class="page-wrap container" style="padding-top:16px">
+
+  <!-- Product name from URL param -->
+  <div class="card" style="padding:14px 16px;margin-bottom:16px">
+    <div style="font-size:13px;color:var(--gray-400)">Reviews for</div>
+    <div style="font-size:18px;font-weight:700" id="productTitle">Loading…</div>
+  </div>
+
+  <!-- Average rating -->
+  <div class="card avg-score" id="avgSection" style="display:none">
+    <div class="avg-num" id="avgNum">—</div>
+    <div class="avg-stars" id="avgStars"></div>
+    <div class="avg-count" id="avgCount"></div>
+  </div>
+
+  <!-- Write review -->
+  <div class="card">
+    <div class="section-title">✍️ Write a Review</div>
+    <div class="star-row" id="starPicker">
+      <span class="star" data-val="1">★</span>
+      <span class="star" data-val="2">★</span>
+      <span class="star" data-val="3">★</span>
+      <span class="star" data-val="4">★</span>
+      <span class="star" data-val="5">★</span>
+    </div>
+    <p class="text-sm text-muted" id="ratingLabel" style="margin-bottom:10px">Tap to rate</p>
+    <textarea class="form-input" id="reviewText" rows="3" placeholder="Share your experience with this product…" style="resize:vertical"></textarea>
+    <div id="reviewErr" class="hidden" style="color:var(--unsafe);font-size:13px;margin-top:6px"></div>
+    <button class="btn btn-primary mt-2" id="submitReview">Submit Review</button>
+  </div>
+
+  <!-- Sort bar -->
+  <div class="sort-bar">
+    <button class="chip selected" data-sort="recent">Most Recent</button>
+    <button class="chip" data-sort="helpful">Most Helpful</button>
+    <button class="chip" data-sort="high">Highest Rated</button>
+    <button class="chip" data-sort="low">Lowest Rated</button>
+  </div>
+
+  <!-- Reviews list -->
+  <div id="reviewsList">
+    <div class="spinner"><div class="spin"></div></div>
+  </div>
+</div>
+
+<nav class="tab-bar">
+  <a href="dashboard.html" class="tab-item"><span>🏠</span>Home</a>
+  <a href="scan.html"      class="tab-item"><span>📷</span>Scan</a>
+  <a href="history.html"   class="tab-item"><span>🕐</span>History</a>
+  <a href="profile.html"   class="tab-item"><span>👤</span>Profile</a>
+</nav>
+
+<script type="module">
+  import { requireAuth, getReviews, postReview, markHelpful, initDarkMode } from './js/api.js';
+  requireAuth();
+  initDarkMode();
+
+  const params      = new URLSearchParams(location.search);
+  const productName = params.get('product') || 'Unknown Product';
+  document.getElementById('productTitle').textContent = productName;
+
+  let allReviews = [];
+  let selectedRating = 0;
+  let sortMode = 'recent';
+
+  // ── Star picker ──────────────────────────────────────────────
+  const ratingLabels = ['', 'Poor', 'Fair', 'Good', 'Very Good', 'Excellent'];
+  document.querySelectorAll('.star').forEach(s => {
+    s.addEventListener('click', () => {
+      selectedRating = parseInt(s.dataset.val);
+      document.querySelectorAll('.star').forEach((x, i) => {
+        x.classList.toggle('filled', i < selectedRating);
+      });
+      document.getElementById('ratingLabel').textContent = ratingLabels[selectedRating];
+    });
+    s.addEventListener('mouseover', () => {
+      const hov = parseInt(s.dataset.val);
+      document.querySelectorAll('.star').forEach((x, i) => x.classList.toggle('filled', i < hov));
+    });
+  });
+  document.getElementById('starPicker').addEventListener('mouseleave', () => {
+    document.querySelectorAll('.star').forEach((x, i) => x.classList.toggle('filled', i < selectedRating));
+  });
+
+  // ── Load reviews ─────────────────────────────────────────────
+  async function load() {
+    try {
+      allReviews = await getReviews(productName);
+      updateAvg();
+      render();
+    } catch {
+      document.getElementById('reviewsList').innerHTML = '<p class="text-muted text-sm">Could not load reviews.</p>';
+    }
+  }
+
+  function updateAvg() {
+    if (!allReviews.length) return;
+    const avg = (allReviews.reduce((s, r) => s + r.rating, 0) / allReviews.length).toFixed(1);
+    const sec = document.getElementById('avgSection');
+    sec.style.display = '';
+    document.getElementById('avgNum').textContent   = avg;
+    document.getElementById('avgStars').textContent = '★'.repeat(Math.round(avg)) + '☆'.repeat(5 - Math.round(avg));
+    document.getElementById('avgCount').textContent = `${allReviews.length} review${allReviews.length !== 1 ? 's' : ''}`;
+  }
+
+  function starsHtml(n) {
+    return '★'.repeat(n) + '☆'.repeat(5 - n);
+  }
+
+  function sorted() {
+    const copy = [...allReviews];
+    if (sortMode === 'recent')  return copy.sort((a,b) => new Date(b.created_at) - new Date(a.created_at));
+    if (sortMode === 'helpful') return copy.sort((a,b) => b.helpful_count - a.helpful_count);
+    if (sortMode === 'high')    return copy.sort((a,b) => b.rating - a.rating);
+    if (sortMode === 'low')     return copy.sort((a,b) => a.rating - b.rating);
+    return copy;
+  }
+
+  function render() {
+    const el = document.getElementById('reviewsList');
+    const list = sorted();
+    if (!list.length) {
+      el.innerHTML = '<p class="text-muted text-sm text-center" style="padding:24px">No reviews yet. Be the first!</p>';
+      return;
+    }
+    el.innerHTML = list.map(r => `
+      <div class="review-card">
+        <div class="review-header">
+          <div>
+            <span class="reviewer-name">${r.user_name}</span>
+            <div class="review-stars">${starsHtml(r.rating)}</div>
+          </div>
+          <div class="review-date">${new Date(r.created_at).toLocaleDateString('en-IN', { day:'numeric', month:'short', year:'numeric' })}</div>
+        </div>
+        <div class="review-text">${r.text}</div>
+        <button class="helpful-btn" onclick="handleHelpful('${r.id}', this)">
+          👍 Helpful (${r.helpful_count})
+        </button>
+      </div>
+    `).join('');
+  }
+
+  // ── Submit review ────────────────────────────────────────────
+  document.getElementById('submitReview').addEventListener('click', async () => {
+    const text = document.getElementById('reviewText').value.trim();
+    const errEl = document.getElementById('reviewErr');
+    errEl.classList.add('hidden');
+
+    if (!selectedRating) {
+      errEl.textContent = 'Please select a star rating.';
+      return errEl.classList.remove('hidden');
+    }
+    if (text.length < 5) {
+      errEl.textContent = 'Please write at least a few words.';
+      return errEl.classList.remove('hidden');
+    }
+
+    const btn = document.getElementById('submitReview');
+    btn.disabled = true; btn.textContent = 'Submitting…';
+
+    try {
+      await postReview(productName, { product_name: productName, rating: selectedRating, text });
+      document.getElementById('reviewText').value = '';
+      selectedRating = 0;
+      document.querySelectorAll('.star').forEach(s => s.classList.remove('filled'));
+      document.getElementById('ratingLabel').textContent = 'Tap to rate';
+      allReviews = await getReviews(productName);
+      updateAvg();
+      render();
+    } catch(e) {
+      errEl.textContent = e.message;
+      errEl.classList.remove('hidden');
+    } finally {
+      btn.disabled = false; btn.textContent = 'Submit Review';
+    }
+  });
+
+  // ── Mark helpful ─────────────────────────────────────────────
+  window.handleHelpful = async (id, btn) => {
+    await markHelpful(productName, id);
+    const rev = allReviews.find(r => r.id === id);
+    if (rev) { rev.helpful_count++; btn.textContent = `👍 Helpful (${rev.helpful_count})`; }
+  };
+
+  // ── Sort chips ───────────────────────────────────────────────
+  document.querySelectorAll('.chip[data-sort]').forEach(c => {
+    c.addEventListener('click', () => {
+      document.querySelectorAll('.chip[data-sort]').forEach(x => x.classList.remove('selected'));
+      c.classList.add('selected');
+      sortMode = c.dataset.sort;
+      render();
+    });
+  });
+
+  load();
+</script>
+</body>
+</html>

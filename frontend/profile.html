@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SafeScan — Profile</title>
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+
+<nav class="nav">
+  <div class="nav-inner">
+    <a href="dashboard.html" class="nav-btn">←</a>
+    <span style="font-weight:700;font-size:16px">My Profile</span>
+    <button class="nav-btn" onclick="toggleTheme()" id="themeBtn">🌙</button>
+  </div>
+</nav>
+
+<div class="container" style="padding-top:20px">
+
+  <!-- Avatar card -->
+  <div class="hero-card" style="text-align:center;padding:28px 20px">
+    <div class="avatar-circle" style="margin:0 auto 14px">👤</div>
+    <h2 id="pName" style="color:white;margin-bottom:4px">Loading…</h2>
+    <p id="pEmail" style="color:rgba(255,255,255,0.75);font-size:14px"></p>
+  </div>
+
+  <!-- Edit name -->
+  <div class="card">
+    <div class="section-title">✏️ Edit Name</div>
+    <div class="form-group" style="margin-bottom:10px">
+      <input class="form-input" id="nameInput" placeholder="Your full name">
+    </div>
+    <button class="btn btn-primary" onclick="saveName()" style="font-size:14px;padding:11px">Save Name</button>
+    <div class="success-box" id="nameOk">✅ Name updated successfully!</div>
+  </div>
+
+  <!-- Allergies -->
+  <div class="card">
+    <div class="section-title">🥜 Allergies</div>
+    <div class="chip-group" id="allergies">
+      <div class="chip" data-val="peanuts">Peanuts</div>
+      <div class="chip" data-val="tree nuts">Tree Nuts</div>
+      <div class="chip" data-val="dairy">Dairy</div>
+      <div class="chip" data-val="eggs">Eggs</div>
+      <div class="chip" data-val="gluten">Gluten</div>
+      <div class="chip" data-val="soy">Soy</div>
+      <div class="chip" data-val="shellfish">Shellfish</div>
+      <div class="chip" data-val="fish">Fish</div>
+      <div class="chip" data-val="sesame">Sesame</div>
+    </div>
+  </div>
+
+  <!-- Diet -->
+  <div class="card">
+    <div class="section-title">🥗 Dietary Preferences</div>
+    <div class="chip-group" id="diet">
+      <div class="chip" data-val="vegan">Vegan</div>
+      <div class="chip" data-val="vegetarian">Vegetarian</div>
+      <div class="chip" data-val="halal">Halal</div>
+      <div class="chip" data-val="kosher">Kosher</div>
+      <div class="chip" data-val="keto">Keto</div>
+      <div class="chip" data-val="diabetic-friendly">Diabetic-Friendly</div>
+      <div class="chip" data-val="low-sodium">Low Sodium</div>
+      <div class="chip" data-val="sugar-free">Sugar-Free</div>
+    </div>
+  </div>
+
+  <!-- Medical -->
+  <div class="card">
+    <div class="section-title">🏥 Medical Conditions</div>
+    <div class="chip-group" id="medical">
+      <div class="chip" data-val="diabetes">Diabetes</div>
+      <div class="chip" data-val="hypertension">Hypertension</div>
+      <div class="chip" data-val="PCOS">PCOS</div>
+      <div class="chip" data-val="lactose intolerance">Lactose Intolerance</div>
+      <div class="chip" data-val="celiac">Celiac</div>
+      <div class="chip" data-val="IBS">IBS</div>
+    </div>
+  </div>
+
+  <!-- Custom -->
+  <div class="card">
+    <div class="section-title">✏️ Custom Ingredients to Avoid</div>
+    <input class="form-input" id="custom" placeholder="e.g. MSG, palm oil, carrageenan (comma separated)">
+  </div>
+
+  <button class="btn btn-primary" onclick="savePrefs()">💾 Save All Preferences</button>
+  <div class="success-box" id="prefsOk" style="margin-top:10px">✅ Preferences saved!</div>
+
+  <div style="height:14px"></div>
+
+  <!-- Sign out -->
+  <button class="btn btn-danger-outline" onclick="logout()">🚪 Sign Out</button>
+
+  <div style="height:20px"></div>
+
+</div>
+
+<nav class="tab-bar">
+  <a href="dashboard.html" class="tab-item"><span class="tab-icon">🏠</span>Home</a>
+  <a href="scan.html"      class="tab-item"><span class="tab-icon">📷</span>Scan</a>
+  <a href="history.html"   class="tab-item"><span class="tab-icon">🕐</span>History</a>
+  <a href="profile.html"   class="tab-item active"><span class="tab-icon">👤</span>Profile</a>
+</nav>
+
+<script>
+  const API='http://127.0.0.1:8000/api';
+  const token=localStorage.getItem('ss_token');
+  if(!token)window.location.href='login.html';
+
+  const saved=localStorage.getItem('ss_theme');
+  if(saved==='dark')document.documentElement.setAttribute('data-theme','dark');
+  function toggleTheme(){
+    const d=document.documentElement.getAttribute('data-theme')==='dark';
+    document.documentElement.setAttribute('data-theme',d?'':'dark');
+    localStorage.setItem('ss_theme',d?'light':'dark');
+    document.getElementById('themeBtn').textContent=d?'🌙':'☀️';
+  }
+  if(saved==='dark')document.getElementById('themeBtn').textContent='☀️';
+
+  document.querySelectorAll('.chip').forEach(c=>c.addEventListener('click',()=>c.classList.toggle('on')));
+  function getSelected(id){return[...document.querySelectorAll(`#${id} .chip.on`)].map(c=>c.dataset.val);}
+  function setSelected(id,vals){document.querySelectorAll(`#${id} .chip`).forEach(c=>c.classList.toggle('on',vals.includes(c.dataset.val)));}
+
+  function flash(id){const el=document.getElementById(id);el.style.display='block';setTimeout(()=>el.style.display='none',2500);}
+
+  async function load(){
+    try{
+      const res=await fetch(`${API}/users/profile`,{headers:{'Authorization':`Bearer ${token}`}});
+      const p=await res.json();
+      document.getElementById('pName').textContent=p.name;
+      document.getElementById('pEmail').textContent=p.email;
+      document.getElementById('nameInput').value=p.name;
+      document.getElementById('custom').value=(p.custom_avoid_list||[]).join(', ');
+      setSelected('allergies',p.allergies||[]);
+      setSelected('diet',p.dietary_preferences||[]);
+      setSelected('medical',p.medical_conditions||[]);
+    }catch{}
+  }
+
+  async function saveName(){
+    const name=document.getElementById('nameInput').value.trim();
+    if(!name)return;
+    await fetch(`${API}/users/profile`,{method:'PUT',headers:{'Content-Type':'application/json','Authorization':`Bearer ${token}`},body:JSON.stringify({name})});
+    document.getElementById('pName').textContent=name;
+    const u=JSON.parse(localStorage.getItem('ss_user')||'{}');
+    u.name=name;localStorage.setItem('ss_user',JSON.stringify(u));
+    flash('nameOk');
+  }
+
+  async function savePrefs(){
+    const custom=document.getElementById('custom').value.split(',').map(s=>s.trim()).filter(Boolean);
+    await fetch(`${API}/users/allergies`,{method:'PUT',headers:{'Content-Type':'application/json','Authorization':`Bearer ${token}`},body:JSON.stringify({
+      allergies:getSelected('allergies'),
+      dietary_preferences:getSelected('diet'),
+      medical_conditions:getSelected('medical'),
+      custom_avoid_list:custom,
+    })});
+    flash('prefsOk');
+  }
+
+  function logout(){
+    localStorage.removeItem('ss_token');
+    localStorage.removeItem('ss_user');
+    window.location.href='login.html';
+  }
+
+  load();
+</script>
+</body>
+</html>

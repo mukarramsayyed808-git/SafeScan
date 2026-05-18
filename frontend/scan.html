@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SafeScan — Scan</title>
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+
+<nav class="nav">
+  <div class="nav-inner">
+    <a href="dashboard.html" class="nav-btn">←</a>
+    <span style="font-weight:700;font-size:16px">Scan Product</span>
+    <button class="nav-btn" onclick="toggleTheme()" id="themeBtn">🌙</button>
+  </div>
+</nav>
+
+<div class="container" style="padding-top:20px">
+
+  <!-- Camera Box -->
+  <div class="camera-box" id="cameraBox">
+    <div class="camera-placeholder" id="placeholder">
+      <div class="cam-icon">📷</div>
+      <p>Tap <strong>Camera</strong> or <strong>Upload</strong><br>to scan an ingredient label</p>
+    </div>
+    <video id="video" autoplay playsinline style="display:none;width:100%;height:100%;object-fit:cover"></video>
+    <img id="preview" class="preview-img" style="display:none" alt="preview">
+  </div>
+
+  <!-- Action Buttons -->
+  <div id="actionRow" style="display:flex;gap:10px;margin-bottom:12px">
+    <button class="btn btn-outline" id="cameraBtn" onclick="startCamera()">📷 Camera</button>
+    <button class="btn btn-outline" id="uploadBtn" onclick="document.getElementById('fileInput').click()">📁 Upload</button>
+    <input type="file" id="fileInput" accept="image/*" style="display:none" onchange="onFileSelect()">
+  </div>
+
+  <!-- Capture button (camera mode) -->
+  <button class="btn btn-primary hidden" id="captureBtn" onclick="capturePhoto()">📸 Capture Photo</button>
+
+  <!-- Analyse button -->
+  <button class="btn btn-primary hidden" id="analyseBtn" onclick="doAnalyse()">🔍 Analyse Ingredients</button>
+
+  <!-- Loading State -->
+  <div class="loading-card hidden" id="loadingState">
+    <div class="spin" style="margin:0 auto 14px"></div>
+    <h3>Analysing ingredients…</h3>
+    <p>Gemini AI is reading every ingredient<br>and cross-checking your health profile.</p>
+    <div class="loading-bar" style="margin-top:16px"><div class="loading-bar-fill"></div></div>
+    <p class="text-xs text-muted" style="margin-top:10px">This takes 5–15 seconds ⏳</p>
+  </div>
+
+  <!-- Error -->
+  <div class="error-box" id="errMsg"></div>
+
+  <!-- Tips -->
+  <div class="card" id="tips">
+    <div class="section-title">💡 Tips for best results</div>
+    <div style="display:flex;flex-direction:column;gap:10px">
+      <div style="display:flex;align-items:flex-start;gap:10px">
+        <span style="font-size:18px;flex-shrink:0">✅</span>
+        <div><strong style="font-size:13px">Good lighting</strong><p class="text-xs text-muted">Hold camera steady in bright light for clearest text</p></div>
+      </div>
+      <div style="display:flex;align-items:flex-start;gap:10px">
+        <span style="font-size:18px;flex-shrink:0">✅</span>
+        <div><strong style="font-size:13px">Full ingredient list</strong><p class="text-xs text-muted">Capture all ingredients, including the fine print</p></div>
+      </div>
+      <div style="display:flex;align-items:flex-start;gap:10px">
+        <span style="font-size:18px;flex-shrink:0">✅</span>
+        <div><strong style="font-size:13px">Works on food, supplements & cosmetics</strong><p class="text-xs text-muted">Any packaged product with an ingredient label</p></div>
+      </div>
+      <div style="display:flex;align-items:flex-start;gap:10px">
+        <span style="font-size:18px;flex-shrink:0">⚠️</span>
+        <div><strong style="font-size:13px">Avoid blurry images</strong><p class="text-xs text-muted">Blurry text reduces accuracy — retake if needed</p></div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<nav class="tab-bar">
+  <a href="dashboard.html" class="tab-item"><span class="tab-icon">🏠</span>Home</a>
+  <a href="scan.html"      class="tab-item active"><span class="tab-icon">📷</span>Scan</a>
+  <a href="history.html"   class="tab-item"><span class="tab-icon">🕐</span>History</a>
+  <a href="profile.html"   class="tab-item"><span class="tab-icon">👤</span>Profile</a>
+</nav>
+
+<script>
+  const API='http://127.0.0.1:8000/api';
+  const token=localStorage.getItem('ss_token');
+  if(!token)window.location.href='login.html';
+
+  const saved=localStorage.getItem('ss_theme');
+  if(saved==='dark')document.documentElement.setAttribute('data-theme','dark');
+  function toggleTheme(){
+    const d=document.documentElement.getAttribute('data-theme')==='dark';
+    document.documentElement.setAttribute('data-theme',d?'':'dark');
+    localStorage.setItem('ss_theme',d?'light':'dark');
+    document.getElementById('themeBtn').textContent=d?'🌙':'☀️';
+  }
+  if(saved==='dark')document.getElementById('themeBtn').textContent='☀️';
+
+  let stream=null;
+  let capturedBlob=null;
+
+  const video=document.getElementById('video');
+  const preview=document.getElementById('preview');
+  const placeholder=document.getElementById('placeholder');
+  const cameraBox=document.getElementById('cameraBox');
+  const actionRow=document.getElementById('actionRow');
+  const captureBtn=document.getElementById('captureBtn');
+  const analyseBtn=document.getElementById('analyseBtn');
+  const loadingState=document.getElementById('loadingState');
+  const tips=document.getElementById('tips');
+  const errMsg=document.getElementById('errMsg');
+
+  function showErr(msg){errMsg.textContent='⚠️ '+msg;errMsg.style.display='block';}
+  function hideErr(){errMsg.style.display='none';}
+
+  async function startCamera(){
+    hideErr();
+    try{
+      stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment',width:{ideal:1280},height:{ideal:960}}});
+      video.srcObject=stream;
+      video.style.display='block';
+      placeholder.style.display='none';
+      preview.style.display='none';
+      captureBtn.classList.remove('hidden');
+      analyseBtn.classList.add('hidden');
+      capturedBlob=null;
+      cameraBox.classList.remove('has-image');
+    }catch(e){
+      showErr('Camera not available. Please use the Upload option instead.');
+    }
+  }
+
+  function capturePhoto(){
+    const canvas=document.createElement('canvas');
+    canvas.width=video.videoWidth||1280;
+    canvas.height=video.videoHeight||960;
+    canvas.getContext('2d').drawImage(video,0,0);
+    canvas.toBlob(blob=>{
+      capturedBlob=blob;
+      preview.src=URL.createObjectURL(blob);
+      preview.style.display='block';
+      video.style.display='none';
+      captureBtn.classList.add('hidden');
+      analyseBtn.classList.remove('hidden');
+      cameraBox.classList.add('has-image');
+      tips.classList.add('hidden');
+      if(stream)stream.getTracks().forEach(t=>t.stop());
+    },'image/jpeg',0.92);
+  }
+
+  function onFileSelect(){
+    const file=document.getElementById('fileInput').files[0];
+    if(!file)return;
+    capturedBlob=file;
+    preview.src=URL.createObjectURL(file);
+    preview.style.display='block';
+    placeholder.style.display='none';
+    video.style.display='none';
+    captureBtn.classList.add('hidden');
+    analyseBtn.classList.remove('hidden');
+    cameraBox.classList.add('has-image');
+    tips.classList.add('hidden');
+    hideErr();
+  }
+
+  async function doAnalyse(){
+    if(!capturedBlob){showErr('Please select or capture an image first.');return;}
+    hideErr();
+    analyseBtn.classList.add('hidden');
+    actionRow.style.display='none';
+    loadingState.classList.remove('hidden');
+
+    const fd=new FormData();
+    fd.append('file',capturedBlob,capturedBlob.name||'scan.jpg');
+
+    try{
+      const res=await fetch(`${API}/scan/image`,{
+        method:'POST',
+        headers:{'Authorization':`Bearer ${token}`},
+        body:fd
+      });
+      const data=await res.json();
+      if(!res.ok)throw new Error(data.detail||'Analysis failed');
+      sessionStorage.setItem('lastScan',JSON.stringify(data));
+      window.location.href=`results.html?id=${data.scan_id}`;
+    }catch(e){
+      loadingState.classList.add('hidden');
+      analyseBtn.classList.remove('hidden');
+      actionRow.style.display='flex';
+      tips.classList.remove('hidden');
+      showErr(e.message||'Could not connect to server. Make sure the backend is running on port 8000.');
+    }
+  }
+</script>
+</body>
+</html>

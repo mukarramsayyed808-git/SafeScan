@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SafeScan — Results</title>
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+
+<nav class="nav">
+  <div class="nav-inner">
+    <a href="dashboard.html" class="nav-btn">←</a>
+    <span style="font-weight:700;font-size:16px">Scan Results</span>
+    <button class="nav-btn" onclick="toggleTheme()" id="themeBtn">🌙</button>
+  </div>
+</nav>
+
+<div class="container" style="padding-top:20px" id="content">
+  <div class="card" style="text-align:center;padding:50px">
+    <div class="spin" style="margin:0 auto 14px"></div>
+    <p class="text-sm text-muted">Loading your results…</p>
+  </div>
+</div>
+
+<nav class="tab-bar">
+  <a href="dashboard.html" class="tab-item"><span class="tab-icon">🏠</span>Home</a>
+  <a href="scan.html"      class="tab-item"><span class="tab-icon">📷</span>Scan</a>
+  <a href="history.html"   class="tab-item"><span class="tab-icon">🕐</span>History</a>
+  <a href="profile.html"   class="tab-item"><span class="tab-icon">👤</span>Profile</a>
+</nav>
+
+<script>
+  const API='http://127.0.0.1:8000/api';
+  const token=localStorage.getItem('ss_token');
+  if(!token)window.location.href='login.html';
+
+  const saved=localStorage.getItem('ss_theme');
+  if(saved==='dark')document.documentElement.setAttribute('data-theme','dark');
+  function toggleTheme(){
+    const d=document.documentElement.getAttribute('data-theme')==='dark';
+    document.documentElement.setAttribute('data-theme',d?'':'dark');
+    localStorage.setItem('ss_theme',d?'light':'dark');
+    document.getElementById('themeBtn').textContent=d?'🌙':'☀️';
+  }
+  if(saved==='dark')document.getElementById('themeBtn').textContent='☀️';
+
+  const params=new URLSearchParams(location.search);
+  const scanId=params.get('id');
+
+  function vIcon(v){return v==='safe'?'✅':v==='caution'?'⚠️':'❌';}
+  function vLabel(v){return v==='safe'?'Safe ✅':v==='caution'?'Use with Caution ⚠️':'Not Safe ❌';}
+  function sColor(s){return s>=70?'var(--safe)':s>=40?'var(--warn)':'var(--danger)';}
+
+  async function load(){
+    let data;
+    const cached=sessionStorage.getItem('lastScan');
+    if(cached){data=JSON.parse(cached);sessionStorage.removeItem('lastScan');}
+    else if(scanId){
+      try{
+        const res=await fetch(`${API}/scan/${scanId}`,{headers:{'Authorization':`Bearer ${token}`}});
+        data=await res.json();
+        if(!res.ok)throw new Error(data.detail||'Failed to load');
+      }catch(e){
+        document.getElementById('content').innerHTML=`<div class="card" style="text-align:center;padding:40px;color:var(--danger)">⚠️ ${e.message}</div>`;
+        return;
+      }
+    }else{
+      document.getElementById('content').innerHTML=`<div class="card" style="text-align:center;padding:40px"><p class="text-muted">No scan data found.</p><a href="scan.html" class="btn btn-primary" style="margin-top:14px;width:auto;padding:12px 24px">Scan Something</a></div>`;
+      return;
+    }
+
+    const v=data.overall_verdict||'caution';
+    const score=data.health_score??50;
+    const ings=data.ingredients||[];
+    const allergies=data.triggered_allergies||[];
+    const concerns=data.main_concerns||[];
+    const alts=data.alternatives||[];
+    let isFav=data.is_favorite||false;
+
+    let html=`
+      <div class="verdict-banner ${v}">
+        <span class="v-icon">${vIcon(v)}</span>
+        <div>
+          <div class="v-title">${vLabel(v)}</div>
+          <div class="v-sub">Health Score: ${score}/100</div>
+        </div>
+        <div class="v-score" style="color:white">${score}</div>
+      </div>`;
+
+    if(allergies.length){
+      html+=`<div class="allergy-alert">
+        <div class="allergy-alert-title">🚨 Allergen Alert Triggered!</div>
+        <div>${allergies.map(a=>`<span class="allergy-tag">${a}</span>`).join('')}</div>
+      </div>`;
+    }
+
+    if(concerns.length){
+      html+=`<div class="card" style="border-left:3px solid var(--warn);padding-left:16px">
+        <div class="section-title" style="color:var(--warn)">⚠️ Main Concerns</div>
+        ${concerns.map(c=>`<div style="font-size:13px;color:var(--text2);margin-bottom:6px;display:flex;gap:8px"><span>•</span>${c}</div>`).join('')}
+      </div>`;
+    }
+
+    if(ings.length){
+      html+=`<div class="card">
+        <div class="section-title">🧪 Ingredient Breakdown <span style="background:var(--bg3);border-radius:20px;padding:2px 10px;font-size:12px;font-weight:500;color:var(--text2)">${ings.length} items</span></div>
+        ${ings.map((ing,i)=>`
+          <div class="ing-item" onclick="document.getElementById('ex${i}').classList.toggle('show')">
+            <div class="ing-dot ${ing.safety_level}"></div>
+            <div style="flex:1">
+              <div class="ing-name">${ing.name}</div>
+              <div class="ing-desc">${ing.explanation}</div>
+              <div style="margin-top:5px;display:flex;flex-wrap:wrap;gap:4px">
+                ${ing.triggers_user_allergy?`<span class="badge badge-allergy">⚠️ ${ing.triggered_allergy_name||'Allergen'}</span>`:''}
+                ${ing.is_natural===true?`<span class="badge badge-natural">🌿 Natural</span>`:''}
+                ${ing.is_natural===false?`<span class="badge badge-synthetic">⚗️ Synthetic</span>`:''}
+              </div>
+              <div class="ing-extra" id="ex${i}">
+                ${ing.side_effects?`<div style="padding:8px;background:var(--bg3);border-radius:8px;margin-top:6px">⚠️ Side effects: ${ing.side_effects}</div>`:'<div style="padding:8px;background:var(--bg3);border-radius:8px;margin-top:6px;color:var(--text3)">No known major side effects.</div>'}
+              </div>
+            </div>
+            <div style="color:var(--text3);font-size:13px;flex-shrink:0">▾</div>
+          </div>`).join('')}
+      </div>`;
+    }
+
+    if(alts.length){
+      html+=`<div class="section-title" style="margin-top:6px">💚 Healthier Alternatives (${alts.length})</div>
+      ${alts.map(a=>`
+        <div class="alt-card">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start">
+            <div>
+              <div class="alt-name">${a.name}</div>
+              <div class="alt-brand">${a.brand}</div>
+            </div>
+            <span class="badge badge-safe">Better Choice</span>
+          </div>
+          <div class="alt-reason">✓ ${a.why_better}</div>
+          <div style="font-size:13px;color:var(--text2);margin-bottom:12px;line-height:1.6">${a.benefits}</div>
+          <div class="nutr-grid">
+            ${a.calories?`<div class="nutr-item"><div class="nutr-val">${a.calories}</div><div class="nutr-key">Calories</div></div>`:''}
+            ${a.protein?`<div class="nutr-item"><div class="nutr-val">${a.protein}g</div><div class="nutr-key">Protein</div></div>`:''}
+            ${a.fat?`<div class="nutr-item"><div class="nutr-val">${a.fat}g</div><div class="nutr-key">Fat</div></div>`:''}
+            ${a.carbs?`<div class="nutr-item"><div class="nutr-val">${a.carbs}g</div><div class="nutr-key">Carbs</div></div>`:''}
+            ${a.sugar?`<div class="nutr-item"><div class="nutr-val">${a.sugar}g</div><div class="nutr-key">Sugar</div></div>`:''}
+            ${a.sodium?`<div class="nutr-item"><div class="nutr-val">${a.sodium}mg</div><div class="nutr-key">Sodium</div></div>`:''}
+          </div>
+          ${(a.price_range||a.where_to_buy)?`<div style="display:flex;align-items:center;gap:8px;margin-top:12px;flex-wrap:wrap">
+            ${a.price_range?`<span style="background:var(--safe-bg);color:var(--safe-text);border-radius:20px;padding:4px 12px;font-size:12px;font-weight:600">${a.price_range}</span>`:''}
+            ${a.where_to_buy?`<span style="font-size:12px;color:var(--text2)">📍 ${a.where_to_buy}</span>`:''}
+          </div>`:''}
+        </div>`).join('')}`;
+    }
+
+    html+=`<div style="display:flex;gap:10px;margin-top:6px;margin-bottom:20px">
+      <button class="btn btn-outline" id="favBtn" onclick="toggleFav()" style="flex:0 0 auto;padding:12px 18px">${isFav?'💛 Saved':'🤍 Save'}</button>
+      <a href="scan.html" class="btn btn-primary" style="text-align:center">📷 New Scan</a>
+    </div>`;
+
+    document.getElementById('content').innerHTML=html;
+  }
+
+  async function toggleFav(){
+    if(!scanId)return;
+    try{
+      const res=await fetch(`${API}/scan/${scanId}/favorite`,{method:'POST',headers:{'Authorization':`Bearer ${token}`}});
+      const d=await res.json();
+      document.getElementById('favBtn').textContent=d.is_favorite?'💛 Saved':'🤍 Save';
+    }catch{}
+  }
+
+  load();
+</script>
+</body>
+</html>

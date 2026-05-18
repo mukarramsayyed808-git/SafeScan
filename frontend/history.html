@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SafeScan — History</title>
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+
+<nav class="nav">
+  <div class="nav-inner">
+    <span class="nav-logo">🕐 History</span>
+    <button class="nav-btn" onclick="toggleTheme()" id="themeBtn">🌙</button>
+  </div>
+</nav>
+
+<div class="container" style="padding-top:16px">
+  <div class="chip-group" style="overflow-x:auto;flex-wrap:nowrap;padding-bottom:4px;margin-bottom:16px">
+    <div class="chip on" data-filter="all" onclick="setFilter('all',this)">All</div>
+    <div class="chip" data-filter="safe"      onclick="setFilter('safe',this)">✅ Safe</div>
+    <div class="chip" data-filter="caution"   onclick="setFilter('caution',this)">⚠️ Caution</div>
+    <div class="chip" data-filter="unsafe"    onclick="setFilter('unsafe',this)">❌ Unsafe</div>
+    <div class="chip" data-filter="favorites" onclick="setFilter('favorites',this)">💛 Saved</div>
+  </div>
+  <div id="list">
+    <div class="card" style="text-align:center;padding:40px">
+      <div class="spin" style="margin:0 auto 12px"></div>
+      <p class="text-sm text-muted">Loading history…</p>
+    </div>
+  </div>
+</div>
+
+<nav class="tab-bar">
+  <a href="dashboard.html" class="tab-item"><span class="tab-icon">🏠</span>Home</a>
+  <a href="scan.html"      class="tab-item"><span class="tab-icon">📷</span>Scan</a>
+  <a href="history.html"   class="tab-item active"><span class="tab-icon">🕐</span>History</a>
+  <a href="profile.html"   class="tab-item"><span class="tab-icon">👤</span>Profile</a>
+</nav>
+
+<script>
+  const API='http://127.0.0.1:8000/api';
+  const token=localStorage.getItem('ss_token');
+  if(!token)window.location.href='login.html';
+
+  const saved=localStorage.getItem('ss_theme');
+  if(saved==='dark')document.documentElement.setAttribute('data-theme','dark');
+  function toggleTheme(){
+    const d=document.documentElement.getAttribute('data-theme')==='dark';
+    document.documentElement.setAttribute('data-theme',d?'':'dark');
+    localStorage.setItem('ss_theme',d?'light':'dark');
+    document.getElementById('themeBtn').textContent=d?'🌙':'☀️';
+  }
+  if(saved==='dark')document.getElementById('themeBtn').textContent='☀️';
+
+  let allScans=[];
+  let activeFilter='all';
+
+  function vIcon(v){return v==='safe'?'✅':v==='caution'?'⚠️':'❌';}
+  function vLabel(v){return v==='safe'?'Safe':v==='caution'?'Caution':'Unsafe';}
+
+  function setFilter(f,el){
+    activeFilter=f;
+    document.querySelectorAll('.chip').forEach(c=>c.classList.remove('on'));
+    el.classList.add('on');
+    render();
+  }
+
+  function render(){
+    const filtered=allScans.filter(s=>{
+      if(activeFilter==='all')return true;
+      if(activeFilter==='favorites')return s.is_favorite;
+      return s.verdict===activeFilter;
+    });
+    const el=document.getElementById('list');
+    if(!filtered.length){
+      el.innerHTML=`<div class="card" style="text-align:center;padding:40px">
+        <div style="font-size:40px;margin-bottom:12px">🔍</div>
+        <p style="font-weight:600;margin-bottom:4px">No scans found</p>
+        <p class="text-sm text-muted">Try a different filter</p>
+      </div>`;
+      return;
+    }
+    el.innerHTML=filtered.map(s=>`
+      <div style="display:flex;align-items:center;gap:0">
+        <a href="results.html?id=${s.id}" class="scan-row" style="flex:1;margin-bottom:0;border-radius:16px 0 0 16px;border-right:none">
+          <div class="scan-thumb">${vIcon(s.verdict)}</div>
+          <div style="flex:1">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
+              <span class="badge badge-${s.verdict}">${vLabel(s.verdict)}</span>
+              ${s.is_favorite?'<span style="font-size:14px">💛</span>':''}
+            </div>
+            <div class="text-xs text-muted">Score: ${s.health_score} · ${new Date(s.scanned_at).toLocaleDateString('en-IN',{day:'numeric',month:'short'})}</div>
+            ${s.triggered_allergies&&s.triggered_allergies.length?`<div style="font-size:11px;color:var(--danger);margin-top:3px">⚠️ ${s.triggered_allergies.join(', ')}</div>`:''}
+          </div>
+          <span style="color:var(--text3);font-size:16px">›</span>
+        </a>
+        <button onclick="deleteScan('${s.id}')" class="scan-row-del" style="background:var(--surface);border:1px solid var(--border);border-left:none;border-radius:0 16px 16px 0;height:100%;align-self:stretch;padding:0 14px;margin-bottom:10px">🗑️</button>
+      </div>`).join('');
+  }
+
+  async function deleteScan(id){
+    if(!confirm('Delete this scan?'))return;
+    await fetch(`${API}/scan/${id}`,{method:'DELETE',headers:{'Authorization':`Bearer ${token}`}});
+    allScans=allScans.filter(s=>s.id!==id);
+    render();
+  }
+
+  async function load(){
+    try{
+      const res=await fetch(`${API}/scan/history`,{headers:{'Authorization':`Bearer ${token}`}});
+      allScans=await res.json();
+      render();
+    }catch{
+      document.getElementById('list').innerHTML=`<div class="card" style="text-align:center;padding:30px;color:var(--danger)">⚠️ Could not load history.</div>`;
+    }
+  }
+  load();
+</script>
+</body>
+</html>

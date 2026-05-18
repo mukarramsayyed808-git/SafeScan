@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SafeScan — Setup</title>
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+
+<nav class="nav">
+  <div class="nav-inner">
+    <span class="nav-logo">🔍 SafeScan</span>
+    <button class="nav-btn" onclick="toggleTheme()" id="themeBtn">🌙</button>
+  </div>
+</nav>
+
+<div class="container" style="padding-top:24px">
+
+  <!-- Header -->
+  <div class="hero-card" style="margin-bottom:20px">
+    <div style="font-size:40px;margin-bottom:12px">🛡️</div>
+    <h2 style="color:white;font-size:20px;margin-bottom:6px">Set Up Your Health Profile</h2>
+    <p style="color:rgba(255,255,255,0.8);font-size:14px;line-height:1.6">Every scan will be personalised to protect you. Select what applies — you can change this anytime in Profile.</p>
+  </div>
+
+  <!-- Allergies -->
+  <div class="card">
+    <div class="section-title">🥜 Allergies <span class="text-xs text-muted" style="font-weight:400">(tap to select)</span></div>
+    <div class="chip-group" id="allergies">
+      <div class="chip" data-val="peanuts">🥜 Peanuts</div>
+      <div class="chip" data-val="tree nuts">🌰 Tree Nuts</div>
+      <div class="chip" data-val="dairy">🥛 Dairy</div>
+      <div class="chip" data-val="eggs">🥚 Eggs</div>
+      <div class="chip" data-val="gluten">🌾 Gluten</div>
+      <div class="chip" data-val="soy">🫘 Soy</div>
+      <div class="chip" data-val="shellfish">🦐 Shellfish</div>
+      <div class="chip" data-val="fish">🐟 Fish</div>
+      <div class="chip" data-val="sesame">🌻 Sesame</div>
+    </div>
+  </div>
+
+  <!-- Diet -->
+  <div class="card">
+    <div class="section-title">🥗 Dietary Preferences</div>
+    <div class="chip-group" id="diet">
+      <div class="chip" data-val="vegan">🌱 Vegan</div>
+      <div class="chip" data-val="vegetarian">🥦 Vegetarian</div>
+      <div class="chip" data-val="halal">☪️ Halal</div>
+      <div class="chip" data-val="kosher">✡️ Kosher</div>
+      <div class="chip" data-val="keto">🥑 Keto</div>
+      <div class="chip" data-val="diabetic-friendly">💉 Diabetic</div>
+      <div class="chip" data-val="low-sodium">🧂 Low Sodium</div>
+      <div class="chip" data-val="sugar-free">🍬 Sugar-Free</div>
+    </div>
+  </div>
+
+  <!-- Medical -->
+  <div class="card">
+    <div class="section-title">🏥 Medical Conditions</div>
+    <div class="chip-group" id="medical">
+      <div class="chip" data-val="diabetes">Diabetes</div>
+      <div class="chip" data-val="hypertension">Hypertension</div>
+      <div class="chip" data-val="PCOS">PCOS</div>
+      <div class="chip" data-val="lactose intolerance">Lactose Intolerance</div>
+      <div class="chip" data-val="celiac">Celiac Disease</div>
+      <div class="chip" data-val="IBS">IBS</div>
+    </div>
+  </div>
+
+  <!-- Custom -->
+  <div class="card">
+    <div class="section-title">✏️ Custom Ingredients to Avoid</div>
+    <p class="text-sm text-muted" style="margin-bottom:10px">Any specific ingredients you want to flag? Separate with commas.</p>
+    <input class="form-input" id="custom" placeholder="e.g. MSG, carrageenan, palm oil, red dye 40">
+  </div>
+
+  <div class="error-box" id="err"></div>
+  <button class="btn btn-primary" id="saveBtn" onclick="saveProfile()">Save & Start Scanning 🚀</button>
+  <p class="text-center text-sm text-muted" style="margin-top:14px;padding-bottom:10px"><a href="dashboard.html" style="color:var(--text3)">Skip for now</a></p>
+
+</div>
+
+<script>
+  const API='http://127.0.0.1:8000/api';
+  const token=localStorage.getItem('ss_token');
+  if(!token)window.location.href='login.html';
+
+  const saved=localStorage.getItem('ss_theme');
+  if(saved==='dark')document.documentElement.setAttribute('data-theme','dark');
+  function toggleTheme(){
+    const d=document.documentElement.getAttribute('data-theme')==='dark';
+    document.documentElement.setAttribute('data-theme',d?'':'dark');
+    localStorage.setItem('ss_theme',d?'light':'dark');
+    document.getElementById('themeBtn').textContent=d?'🌙':'☀️';
+  }
+  if(saved==='dark')document.getElementById('themeBtn').textContent='☀️';
+
+  document.querySelectorAll('.chip').forEach(c=>c.addEventListener('click',()=>c.classList.toggle('on')));
+  function getSelected(id){return[...document.querySelectorAll(`#${id} .chip.on`)].map(c=>c.dataset.val);}
+
+  async function saveProfile(){
+    const btn=document.getElementById('saveBtn');
+    const err=document.getElementById('err');
+    err.style.display='none';
+    btn.disabled=true;btn.textContent='Saving…';
+    const custom=document.getElementById('custom').value.split(',').map(s=>s.trim()).filter(Boolean);
+    try{
+      const res=await fetch(`${API}/users/allergies`,{
+        method:'PUT',
+        headers:{'Content-Type':'application/json','Authorization':`Bearer ${token}`},
+        body:JSON.stringify({
+          allergies:getSelected('allergies'),
+          dietary_preferences:getSelected('diet'),
+          medical_conditions:getSelected('medical'),
+          custom_avoid_list:custom,
+        }),
+      });
+      if(!res.ok)throw new Error('Failed to save preferences');
+      window.location.href='dashboard.html';
+    }catch(e){
+      err.textContent=e.message;err.style.display='block';
+    }finally{
+      btn.disabled=false;btn.textContent='Save & Start Scanning 🚀';
+    }
+  }
+</script>
+</body>
+</html>
