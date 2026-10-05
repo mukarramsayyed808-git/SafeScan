@@ -122,22 +122,24 @@
   // ── Load reviews ─────────────────────────────────────────────
   async function load() {
     try {
-      allReviews = await getReviews(productName);
-      updateAvg();
+      const data = await getReviews(productName);
+      allReviews = data.reviews || [];
+      updateAvg(data.average_rating, data.review_count);
       render();
     } catch {
       document.getElementById('reviewsList').innerHTML = '<p class="text-muted text-sm">Could not load reviews.</p>';
     }
   }
 
-  function updateAvg() {
+  function updateAvg(average, count) {
     if (!allReviews.length) return;
-    const avg = (allReviews.reduce((s, r) => s + r.rating, 0) / allReviews.length).toFixed(1);
+    const avg = (average ?? (allReviews.reduce((s, r) => s + r.rating, 0) / allReviews.length)).toFixed(1);
     const sec = document.getElementById('avgSection');
     sec.style.display = '';
     document.getElementById('avgNum').textContent   = avg;
     document.getElementById('avgStars').textContent = '★'.repeat(Math.round(avg)) + '☆'.repeat(5 - Math.round(avg));
-    document.getElementById('avgCount').textContent = `${allReviews.length} review${allReviews.length !== 1 ? 's' : ''}`;
+    const total = count ?? allReviews.length;
+    document.getElementById('avgCount').textContent = `${total} approved review${total !== 1 ? 's' : ''}`;
   }
 
   function starsHtml(n) {
@@ -201,8 +203,9 @@
       selectedRating = 0;
       document.querySelectorAll('.star').forEach(s => s.classList.remove('filled'));
       document.getElementById('ratingLabel').textContent = 'Tap to rate';
-      allReviews = await getReviews(productName);
-      updateAvg();
+      const data = await getReviews(productName);
+      allReviews = data.reviews || [];
+      updateAvg(data.average_rating, data.review_count);
       render();
     } catch(e) {
       errEl.textContent = e.message;

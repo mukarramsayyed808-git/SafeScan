@@ -64,6 +64,7 @@ async def scan_image(
     # --- Save scan to DB ---
     scan_doc = {
         "user_id":            uid,
+        "product_name":       analysis.get("product_name", "Scanned product"),
         "image_url":          fpath,
         "ocr_text":           ocr_text,
         "ai_analysis":        analysis,
@@ -77,6 +78,7 @@ async def scan_image(
 
     return {
         "scan_id": str(result.inserted_id),
+        "product_name": scan_doc["product_name"],
         "ocr_text": ocr_text,
         **analysis,
     }
@@ -96,6 +98,7 @@ async def get_history(uid: str = Depends(get_current_user)):
             "is_favorite":       s.get("is_favorite", False),
             "scanned_at":        s["scanned_at"].isoformat(),
             "image_url":         s.get("image_url", ""),
+            "product_name":      s.get("product_name", "Scanned product"),
         })
     return scans
 
@@ -114,6 +117,7 @@ async def get_scan(scan_id: str, uid: str = Depends(get_current_user)):
         "ocr_text":    s.get("ocr_text", ""),
         "scanned_at":  s["scanned_at"].isoformat(),
         "is_favorite": s.get("is_favorite", False),
+        "product_name": s.get("product_name", "Scanned product"),
         **s.get("ai_analysis", {}),
     }
 

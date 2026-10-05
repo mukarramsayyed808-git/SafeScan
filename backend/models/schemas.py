@@ -68,9 +68,12 @@ class ScanResult(BaseModel):
 
 # --- Review ---
 class ReviewCreate(BaseModel):
-    product_name: str
+    product_name: str = Field(..., min_length=1, max_length=160)
     rating: int = Field(..., ge=1, le=5)
-    text: str
+    text: str = Field(..., min_length=5, max_length=1000)
+
+class ReviewApprovalUpdate(BaseModel):
+    approved: bool
 
 class ReviewResponse(BaseModel):
     id: str

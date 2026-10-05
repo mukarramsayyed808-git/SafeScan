@@ -63,6 +63,7 @@ Also use this OCR-extracted text as a fallback if the image is unclear:
 
 Return ONLY a valid JSON object (no markdown fences, no preamble) with this exact structure:
 {{
+  "product_name": "<product or brand name from the label; use a concise generic name only if unreadable>",
   "overall_verdict": "safe" | "caution" | "unsafe",
   "health_score": <integer 0-100>,
   "ingredients": [

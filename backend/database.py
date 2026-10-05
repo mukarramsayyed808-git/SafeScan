@@ -13,6 +13,7 @@ async def connect_db():
     await db.scans.create_index("user_id")
     await db.scans.create_index("scanned_at")
     await db.reviews.create_index([("product_id", 1), ("user_id", 1)])
+    await db.reviews.create_index([("product_name", 1), ("status", 1), ("created_at", -1)])
     print(f"✅ Connected to MongoDB: {settings.MONGO_DB}")
 
 async def close_db():

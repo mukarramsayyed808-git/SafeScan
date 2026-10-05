@@ -9,6 +9,8 @@ class Settings(BaseSettings):
     GEMINI_API_KEY: str = ""
     # This current Flash Lite model is available to this project's API key for vision requests.
     GEMINI_MODEL: str = "gemini-flash-lite-latest"
+    # Comma-separated email allowlist for administrator accounts. Keep this only in .env.
+    ADMIN_EMAILS: str = ""
     UPLOAD_DIR: str = "uploads"
 
     class Config:

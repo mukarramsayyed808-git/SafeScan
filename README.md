@@ -136,6 +136,8 @@ MONGO_DB=safescan
 JWT_SECRET=your-long-random-secret-string
 JWT_EXPIRE_HOURS=24
 GEMINI_API_KEY=your-gemini-api-key-here
+GEMINI_MODEL=gemini-flash-lite-latest
+ADMIN_EMAILS=your-admin-email@example.com
 UPLOAD_DIR=uploads
 ```
 
@@ -181,6 +183,16 @@ python -m http.server 3000
 ```
 http://localhost:3000/index.html
 ```
+
+### Admin Panel
+
+To authorize an administrator, add that existing SafeScan account's email to `ADMIN_EMAILS` in `backend/.env`. For multiple administrators, use a comma-separated list. Restart the backend, then open:
+
+```
+http://localhost:3000/admin.html
+```
+
+Sign in with that SafeScan account's normal email and password. Admin privileges are verified on the backend for every admin API request; a normal user token cannot access the panel or its data.
 
 ---
 

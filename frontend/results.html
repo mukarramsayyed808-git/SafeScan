@@ -47,10 +47,13 @@
 
   const params=new URLSearchParams(location.search);
   const scanId=params.get('id');
+  let reviewProductName='';
+  let selectedReviewRating=0;
 
   function vIcon(v){return v==='safe'?'✅':v==='caution'?'⚠️':'❌';}
   function vLabel(v){return v==='safe'?'Safe ✅':v==='caution'?'Use with Caution ⚠️':'Not Safe ❌';}
   function sColor(s){return s>=70?'var(--safe)':s>=40?'var(--warn)':'var(--danger)';}
+  function escapeHtml(value){return String(value??'').replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));}
 
   async function load(){
     let data;
@@ -77,6 +80,7 @@
     const concerns=data.main_concerns||[];
     const alts=data.alternatives||[];
     let isFav=data.is_favorite||false;
+    reviewProductName=(data.product_name||'Scanned product').trim();
 
     let html=`
       <div class="verdict-banner ${v}">
@@ -153,12 +157,68 @@
         </div>`).join('')}`;
     }
 
+    html+=`<div class="card" id="reviewSection">
+      <div class="section-title">⭐ Rate &amp; Review this Product</div>
+      <p class="text-sm text-muted" style="margin-bottom:12px">Share your experience with <strong>${escapeHtml(reviewProductName)}</strong>. Reviews are published after admin approval.</p>
+      <div id="reviewSummary" class="text-sm text-muted" style="margin-bottom:12px">Loading approved reviews…</div>
+      <div id="reviewStars" style="display:flex;gap:5px;margin-bottom:8px"></div>
+      <p id="reviewRatingLabel" class="text-sm text-muted" style="margin-bottom:10px">Select a rating</p>
+      <textarea id="reviewText" class="form-input" rows="3" maxlength="1000" placeholder="Write at least a few words about this product…" style="resize:vertical"></textarea>
+      <div id="reviewMessage" class="error-box" style="margin-top:10px"></div>
+      <button id="reviewSubmit" class="btn btn-primary" style="margin-top:10px" onclick="submitReview()">Submit Review</button>
+      <div id="approvedReviews" style="margin-top:18px"></div>
+    </div>`;
+
     html+=`<div style="display:flex;gap:10px;margin-top:6px;margin-bottom:20px">
       <button class="btn btn-outline" id="favBtn" onclick="toggleFav()" style="flex:0 0 auto;padding:12px 18px">${isFav?'💛 Saved':'🤍 Save'}</button>
       <a href="scan.html" class="btn btn-primary" style="text-align:center">📷 New Scan</a>
     </div>`;
 
     document.getElementById('content').innerHTML=html;
+    initReviews();
+  }
+
+  function reviewStars(rating){return '★'.repeat(rating)+'☆'.repeat(5-rating);}
+  function renderReviewPicker(){
+    const el=document.getElementById('reviewStars');
+    if(!el)return;
+    el.innerHTML=[1,2,3,4,5].map(value=>`<button type="button" aria-label="${value} stars" onclick="selectReviewRating(${value})" style="border:0;background:transparent;font-size:30px;line-height:1;color:${value<=selectedReviewRating?'#f59e0b':'var(--border2)'};cursor:pointer">★</button>`).join('');
+    const labels=['','Poor','Fair','Good','Very good','Excellent'];
+    document.getElementById('reviewRatingLabel').textContent=selectedReviewRating?labels[selectedReviewRating]:'Select a rating';
+  }
+
+  function selectReviewRating(rating){selectedReviewRating=rating;renderReviewPicker();}
+
+  async function initReviews(){renderReviewPicker();await loadReviews();}
+
+  async function loadReviews(){
+    const summary=document.getElementById('reviewSummary');
+    const list=document.getElementById('approvedReviews');
+    try{
+      const res=await fetch(`${API}/products/${encodeURIComponent(reviewProductName)}/reviews`);
+      const data=await res.json();
+      if(!res.ok)throw new Error(data.detail||'Could not load reviews');
+      summary.textContent=data.review_count?`${data.average_rating}/5 from ${data.review_count} approved review${data.review_count===1?'':'s'}`:'No approved reviews yet.';
+      list.innerHTML=data.reviews.length?data.reviews.map(review=>`<div style="border-top:1px solid var(--border);padding:12px 0"><div style="display:flex;justify-content:space-between;gap:10px"><strong>${escapeHtml(review.user_name)}</strong><span style="color:#f59e0b">${reviewStars(review.rating)}</span></div><p class="text-sm" style="margin-top:4px">${escapeHtml(review.text)}</p></div>`).join(''):'';
+    }catch(error){summary.textContent=error.message;}
+  }
+
+  async function submitReview(){
+    const message=document.getElementById('reviewMessage');
+    const text=document.getElementById('reviewText').value.trim();
+    message.style.display='none';
+    if(!selectedReviewRating){message.textContent='Please select a 1–5 star rating.';message.style.display='block';return;}
+    if(text.length<5){message.textContent='Please write at least 5 characters.';message.style.display='block';return;}
+    const button=document.getElementById('reviewSubmit');
+    button.disabled=true;button.textContent='Submitting…';
+    try{
+      const res=await fetch(`${API}/products/${encodeURIComponent(reviewProductName)}/reviews`,{method:'POST',headers:{'Authorization':`Bearer ${token}`,'Content-Type':'application/json'},body:JSON.stringify({product_name:reviewProductName,rating:selectedReviewRating,text})});
+      const data=await res.json();
+      if(!res.ok)throw new Error(data.detail||'Could not submit review');
+      message.className='success-box';message.textContent=data.message;message.style.display='block';
+      document.getElementById('reviewText').value='';selectedReviewRating=0;renderReviewPicker();
+    }catch(error){message.className='error-box';message.textContent=error.message;message.style.display='block';
+    }finally{button.disabled=false;button.textContent='Submit Review';}
   }
 
   async function toggleFav(){

@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SafeScan — Admin Panel</title>
+  <link rel="stylesheet" href="css/styles.css">
+  <style>
+    .admin-container{max-width:1120px;margin:0 auto;padding:24px 20px 48px}.admin-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:12px}.admin-table{width:100%;border-collapse:collapse;font-size:13px}.admin-table th,.admin-table td{padding:11px 8px;border-bottom:1px solid var(--border);text-align:left;vertical-align:top}.admin-table th{color:var(--text3);font-size:11px;text-transform:uppercase}.admin-scroll{overflow-x:auto}.admin-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:18px;margin-top:16px}.admin-login{max-width:430px;margin:70px auto}.admin-stat{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);padding:16px}.admin-stat b{display:block;font-size:27px;color:var(--accent)}.chart{display:flex;align-items:flex-end;gap:8px;height:110px;padding-top:12px}.bar{flex:1;min-width:28px;background:linear-gradient(180deg,var(--accent2),var(--accent));border-radius:7px 7px 2px 2px;position:relative}.bar span{position:absolute;bottom:-22px;left:50%;transform:translateX(-50%);font-size:10px;color:var(--text3);white-space:nowrap}.bar i{position:absolute;top:-20px;left:50%;transform:translateX(-50%);font-style:normal;font-size:11px;color:var(--text2)}@media(max-width:700px){.admin-grid{grid-template-columns:repeat(2,1fr)}.admin-container{padding:16px}.hide-mobile{display:none}}
+  </style>
+</head>
+<body>
+  <nav class="nav"><div class="nav-inner" style="max-width:1120px"><span class="nav-logo">🔍 SafeScan Admin</span><div class="nav-actions"><button class="nav-btn" onclick="toggleTheme()" title="Toggle theme">🌙</button><button class="nav-btn" onclick="logout()" title="Log out">↪</button></div></div></nav>
+
+  <main id="loginView" class="container admin-login">
+    <div class="card"><h1 style="margin-bottom:8px">Administrator sign in</h1><p class="text-sm mb2">Use an account whose email is listed in <code>ADMIN_EMAILS</code> on the server.</p><div id="loginError" class="error-box"></div><form onsubmit="adminLogin(event)"><div class="form-group"><label class="form-label" for="email">Email</label><input id="email" class="form-input" type="email" required autocomplete="email"></div><div class="form-group"><label class="form-label" for="password">Password</label><input id="password" class="form-input" type="password" required autocomplete="current-password"></div><button class="btn btn-primary" id="loginBtn">Sign in to Admin Panel</button></form></div>
+  </main>
+
+  <main id="adminView" class="admin-container hidden">
+    <div style="display:flex;justify-content:space-between;align-items:end;gap:12px;margin-bottom:16px"><div><h1>Admin Dashboard</h1><p id="welcome" class="text-sm">Live MongoDB statistics</p></div><button class="btn btn-outline btn-sm" style="flex:none" onclick="loadAdminData()">↻ Refresh</button></div>
+    <div class="admin-grid"><div class="admin-stat"><span class="text-sm">Total users</span><b id="totalUsers">—</b></div><div class="admin-stat"><span class="text-sm">Total scans</span><b id="totalScans">—</b></div><div class="admin-stat"><span class="text-sm">Safe scans</span><b id="safeScans" style="color:var(--safe)">—</b></div><div class="admin-stat"><span class="text-sm">Unsafe scans</span><b id="unsafeScans" style="color:var(--danger)">—</b></div><div class="admin-stat"><span class="text-sm">Average score</span><b id="avgScore">—</b></div></div>
+    <section class="admin-card"><div class="section-title">📈 Scans in the last 7 days</div><div id="dailyChart" class="chart"><span class="text-sm text-muted">Loading statistics…</span></div></section>
+    <section class="admin-card"><div class="section-title">🕐 Recent scans</div><div class="admin-scroll"><table class="admin-table"><thead><tr><th>User</th><th>Verdict</th><th>Score</th><th>When</th></tr></thead><tbody id="recentScans"></tbody></table></div></section>
+    <section class="admin-card"><div class="section-title">👥 User management <span id="userCount" class="text-sm text-muted"></span></div><div class="admin-scroll"><table class="admin-table"><thead><tr><th>Name</th><th>Email</th><th>Scans</th><th>Joined</th><th></th></tr></thead><tbody id="usersTable"></tbody></table></div></section>
+    <section class="admin-card"><div class="section-title">⭐ Review management <span id="reviewCount" class="text-sm text-muted"></span></div><div class="admin-scroll"><table class="admin-table"><thead><tr><th>Product</th><th>User</th><th>Rating</th><th>Review</th><th>Status</th><th></th></tr></thead><tbody id="reviewsTable"></tbody></table></div></section>
+  </main>
+
+<script>
+const API='http://localhost:8000/api';
+const $=id=>document.getElementById(id);
+const escapeHtml=v=>String(v??'').replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));
+const date=v=>v?new Date(v).toLocaleString('en-IN',{dateStyle:'medium',timeStyle:'short'}):'—';
+function token(){return localStorage.getItem('ss_token');}
+function showLogin(message=''){ $('adminView').classList.add('hidden');$('loginView').classList.remove('hidden');if(message){$('loginError').textContent=message;$('loginError').style.display='block';}}
+function toggleTheme(){const dark=document.documentElement.getAttribute('data-theme')==='dark';document.documentElement.setAttribute('data-theme',dark?'':'dark');localStorage.setItem('ss_theme',dark?'light':'dark');}
+if(localStorage.getItem('ss_theme')==='dark')document.documentElement.setAttribute('data-theme','dark');
+async function api(path,options={}){const headers={...(options.headers||{}),'Authorization':`Bearer ${token()}`};if(options.body)headers['Content-Type']='application/json';const res=await fetch(API+path,{...options,headers});const data=await res.json().catch(()=>({}));if(!res.ok){const err=new Error(data.detail||'Request failed');err.status=res.status;throw err;}return data;}
+async function adminLogin(event){event.preventDefault();$('loginError').style.display='none';$('loginBtn').disabled=true;try{const res=await fetch(API+'/admin/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:$('email').value.trim(),password:$('password').value})});const data=await res.json();if(!res.ok)throw new Error(data.detail||'Sign in failed');localStorage.setItem('ss_token',data.access_token);localStorage.setItem('ss_user',JSON.stringify({id:data.user_id,name:data.name}));await loadAdminData();}catch(e){$('loginError').textContent=e.message;$('loginError').style.display='block';}finally{$('loginBtn').disabled=false;}}
+function verdictBadge(v){return `<span class="badge badge-${escapeHtml(v)}">${escapeHtml(v||'caution')}</span>`;}
+async function loadAdminData(){try{const [overview,users,reviews]=await Promise.all([api('/admin/overview'),api('/admin/users'),api('/admin/reviews')]);$('loginView').classList.add('hidden');$('adminView').classList.remove('hidden');$('welcome').textContent=`Welcome, ${overview.admin_name}. Live MongoDB statistics.`;$('totalUsers').textContent=overview.total_users;$('totalScans').textContent=overview.total_scans;$('safeScans').textContent=overview.safe;$('unsafeScans').textContent=overview.unsafe;$('avgScore').textContent=overview.average_health_score;$('userCount').textContent=`(${users.length})`;$('reviewCount').textContent=`(${reviews.length})`;
+const max=Math.max(1,...overview.daily_scans.map(d=>d.count));$('dailyChart').innerHTML=overview.daily_scans.length?overview.daily_scans.map(d=>`<div class="bar" style="height:${Math.max(8,Math.round(d.count/max*88))}px"><i>${d.count}</i><span>${escapeHtml(d.date.slice(5))}</span></div>`).join(''):'<span class="text-sm text-muted">No scans in the last 7 days.</span>';
+$('recentScans').innerHTML=overview.recent_scans.length?overview.recent_scans.map(s=>`<tr><td><strong>${escapeHtml(s.user_name)}</strong><br><span class="text-xs text-muted">${escapeHtml(s.user_email)}</span></td><td>${verdictBadge(s.verdict)}</td><td>${escapeHtml(s.health_score)}</td><td>${date(s.scanned_at)}</td></tr>`).join(''):'<tr><td colspan="4" class="text-muted">No scans yet.</td></tr>';
+$('usersTable').innerHTML=users.map(u=>`<tr><td>${escapeHtml(u.name)}${u.is_admin?' <span class="badge badge-safe">Admin</span>':''}</td><td>${escapeHtml(u.email)}</td><td>${u.scan_count}</td><td>${date(u.created_at)}</td><td>${u.is_admin?'':`<button class="btn btn-danger-outline btn-sm" onclick="deleteUser('${u.id}','${escapeHtml(u.name)}')">Delete</button>`}</td></tr>`).join('')||'<tr><td colspan="5" class="text-muted">No users.</td></tr>';
+$('reviewsTable').innerHTML=reviews.map(r=>`<tr><td>${escapeHtml(r.product_name)}</td><td>${escapeHtml(r.user_name)}</td><td>${'★'.repeat(Math.max(0,Math.min(5,r.rating)))}</td><td>${escapeHtml(r.text)}</td><td><span class="badge ${r.status==='approved'?'badge-safe':'badge-caution'}">${escapeHtml(r.status)}</span></td><td>${r.status==='approved'?`<button class="btn btn-outline btn-sm" onclick="setReviewApproval('${r.id}',false)">Unapprove</button> `:`<button class="btn btn-primary btn-sm" onclick="setReviewApproval('${r.id}',true)">Approve</button> `}<button class="btn btn-danger-outline btn-sm" onclick="deleteReview('${r.id}')">Delete</button></td></tr>`).join('')||'<tr><td colspan="6" class="text-muted">No reviews.</td></tr>';
+}catch(e){showLogin(e.status===403?'This signed-in account is not authorized as an administrator.':e.message);}}
+async function deleteUser(id,name){if(!confirm(`Delete ${name} and all their scans and reviews? This cannot be undone.`))return;try{await api(`/admin/users/${id}`,{method:'DELETE'});await loadAdminData();}catch(e){alert(e.message);}}
+async function deleteReview(id){if(!confirm('Delete this review? This cannot be undone.'))return;try{await api(`/admin/reviews/${id}`,{method:'DELETE'});await loadAdminData();}catch(e){alert(e.message);}}
+async function setReviewApproval(id,approved){try{await api(`/admin/reviews/${id}/approval`,{method:'PATCH',body:JSON.stringify({approved})});await loadAdminData();}catch(e){alert(e.message);}}
+if(token())loadAdminData();
+setInterval(()=>{if(token()&&!$('adminView').classList.contains('hidden'))loadAdminData();},30000);
+</script>
+</body>
+</html>
