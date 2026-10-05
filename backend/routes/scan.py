@@ -6,7 +6,7 @@ import os, shutil, uuid
 from database import get_db
 from utils.auth import get_current_user
 from services.ocr_service import extract_text
-from services.gemini_service import analyze_ingredients
+from services.gemini_service import analyze_ingredients, GeminiServiceError
 from config import settings
 
 router = APIRouter()
@@ -55,8 +55,11 @@ async def scan_image(
     # --- Gemini AI analysis ---
     try:
         analysis = await analyze_ingredients(img_bytes, file.content_type, ocr_text, profile)
-    except Exception as e:
-        raise HTTPException(500, f"AI analysis failed: {str(e)}")
+    except GeminiServiceError as e:
+        # Do not save an incomplete scan; give the browser an accurate retryable error.
+        if os.path.exists(fpath):
+            os.remove(fpath)
+        raise HTTPException(e.status_code, f"AI analysis failed: {e.detail}")
 
     # --- Save scan to DB ---
     scan_doc = {

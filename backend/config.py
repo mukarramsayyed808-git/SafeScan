@@ -7,6 +7,8 @@ class Settings(BaseSettings):
     JWT_ALGORITHM: str = "HS256"
     JWT_EXPIRE_HOURS: int = 24
     GEMINI_API_KEY: str = ""
+    # This current Flash Lite model is available to this project's API key for vision requests.
+    GEMINI_MODEL: str = "gemini-flash-lite-latest"
     UPLOAD_DIR: str = "uploads"
 
     class Config:
